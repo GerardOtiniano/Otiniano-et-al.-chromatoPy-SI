@@ -1,4 +1,4 @@
-,Sample Name,Region,variable,hand_value,chromatopy_value,chromatopy_value_lower,chromatopy_value_upper,hand_ra,chromatopy_ra,chromatopy_ra_lower,chromatopy_ra_upper,chromatopy_fa,chromatopy_fa_lower,chromatopy_fa_upper,chromatopy_fa_combined_error,hand_fa
+,Sample Name,Region,variable,hand_value,chromatopy_pa,chromatopy_pa_lower,chromatopy_pa_upper,hand_ra,chromatopy_ra,chromatopy_ra_lower,chromatopy_ra_upper,chromatopy_fa,chromatopy_fa_lower,chromatopy_fa_upper,chromatopy_fa_combined_error,hand_fa
 0,H2202081,marine offshore NW Africa,IIIa,6951.56787,0.0,0.0,0.0,0.00023227328791382098,0.0,,,0.0,,,,0.03471044356351744
 1,H2202085,marine offshore NW Africa,IIIa,19571.6,0.0,0.0,0.0,0.0006539474211785461,0.0,,,0.0,,,,0.018604807064036253
 2,H2202087,marine offshore NW Africa,IIIa,16378.4,230.2451552,0.1936409999999853,0.17835759999999823,0.0005472527766268828,0.0004779281307636024,2.8095124755065332e-05,2.850294355316659e-05,0.023899786345132058,0.0009990671372091307,0.0009902621955161458,0.0009946646663626384,0.027217376279102295
