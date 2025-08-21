@@ -1,58 +1,31 @@
-"""
-Python code for Figure S1.
-"""
 import pandas as pd
 import numpy as np
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.stats import gaussian_kde
-
+from data_processing.load_data import load_chraomtopy_and_manual
 
 # Import data
-chpy_man_data = pd.read_csv('data/chromatoPy and manual data.csv') # subset of overlapping chromatoPy and manually integrated data results
-chpy_full = pd.read_csv('data/chromatopy_data_full.csv') # results from chromatopy integration (no subsetting by manual integrations)
-user_2_data = pd.read_csv('data/chromatoPy_user_2_data_peak_area.csv') # chromatoPy integrations from independent second user
-user_2_fa = pd.read_csv('data/user_2_data_fractional_abundance.csv')
+df  = load_chraomtopy_and_manual()
+x_v = 'chromatopy_pa'
+y_v = 'user_2_pa'
+brgdgts = ["Ia", "IIa", "IIa'", "IIIa", "IIIa'", "Ib", "IIb", "IIb'", "IIIb", "IIIb'", "Ic", "IIc", "IIc'", "IIIc", "IIIc'"]
+sample_to_ignore = ['H2202081', 'H2308012', 'H2202085', 'H2202087', 'H1608000014', 'H1608000013', 'H2307071'] # misidentified peaks
+ignored_samples = df.loc[((df['Sample Name'].isin(sample_to_ignore))&(df['variable'].isin(brgdgts)))]
+df = df[~df['Sample Name'].isin(sample_to_ignore)]
+df = df.loc[~((df['Sample Name'].isin(sample_to_ignore))&(df['variable'].isin(brgdgts)))]
 
-# Process data
-chpy_man_data['chromatopy_ra'].fillna(0, inplace=True)
-chpy_man_data['chromatopy_ra'].fillna(0, inplace=True)
-chpy_man_data['hand_ra'].fillna(0, inplace=True)
-chpy_man_data['hand_ra'].fillna(0, inplace=True)
-
-columns_of_interest = ["Sample Name", "Ia", "Ib", "Ic", "IIa", "IIb", "IIc", "IIIa", "IIIb", "IIIc", "IIa'", "IIb'", "IIc'", "IIIa'", "IIIb'", "IIIc'", 'GDGT-0', 'GDGT-1', 'GDGT-2', 'GDGT-3', 'GDGT-4', "GDGT-4'"]
-brgdgts = ["Ia", "Ib", "Ic", "IIa", "IIb", "IIc", "IIIa", "IIIb", "IIIc", "IIa'", "IIb'", "IIc'", "IIIa'", "IIIb'", "IIIc'"]
-user_2_data = user_2_data[columns_of_interest]
-user_2_data = user_2_data.melt(id_vars='Sample Name')
-user_2_data = user_2_data.rename(columns={'value': 'user_2_values'})
-
-# Seperate mis-identified samples
-misid_names = ['H1608000196', 'H1608000191', 'H1608000189', 'H2102002', 'H2102003', 'H2102004'] # names of samples with misidentified peaks
-misidentified_samples = chpy_man_data[chpy_man_data['Sample Name'].isin(misid_names)]
-chpy_man_data = chpy_man_data.loc[~((chpy_man_data['Sample Name'].isin(misid_names))&(chpy_man_data['variable'].isin(brgdgts)))]
-user_peak_areas=pd.merge(user_2_data, chpy_full[['Sample Name', 'variable', 'chromatopy_value']],on=['Sample Name', 'variable'], how='right')
-df = pd.merge(chpy_man_data, user_peak_areas, on=['Sample Name', 'variable'], how='left', suffixes=("","_PA"))
-df=df.fillna(0)
-user_peak_areas = df
-
-x_v = 'chromatopy_value'
-y_v = 'user_2_values'
-sample_to_ignore = ['H2202081', 'H2308012', 'H2202085', 'H2202087', 'H1608000014', 'H2307071']
-ignored_samples = user_peak_areas[user_peak_areas['Sample Name'].isin(sample_to_ignore)]
-user_peak_areas = user_peak_areas[~user_peak_areas['Sample Name'].isin(sample_to_ignore)]
-
-
-all_regions = sorted(set(user_peak_areas['Region'].dropna().unique()))
+all_regions = sorted(set(df['Region'].dropna().unique()))
 color_list = plt.cm.get_cmap('tab20', len(all_regions)).colors
 region_color_map = dict(zip(all_regions, color_list))
 brgdgt_types = ["Ia", "IIa","IIa'" , "IIIa", "IIIa'",
                 "Ib", "IIb", "IIb'", "IIIb", "IIIb'",
                 "Ic", "IIc", "IIc'", "IIIc", "IIIc'", 
                 'GDGT-0', 'GDGT-1', 'GDGT-2', 'GDGT-3', 'GDGT-4', "GDGT-4'"]
-unique_types = sorted(user_peak_areas['variable'].unique())
+unique_types = sorted(df['variable'].unique())
 
 plt.rcParams.update({'font.size': 10})
 fig, axes = plt.subplots(4, 6, figsize=(15, 11), constrained_layout=True)
@@ -75,7 +48,7 @@ for i in range(4):
             continue
         brgdgt_type = brgdgt_types[x]
         ax = axes[i,j]
-        subset = user_peak_areas[user_peak_areas['variable'] == brgdgt_type]
+        subset = df[df['variable'] == brgdgt_type]
         ig_sub = ignored_samples[ignored_samples['variable']== brgdgt_type]
         # limits
         z_min_p = subset[[x_v,y_v]].min().min()
@@ -85,9 +58,9 @@ for i in range(4):
         z_min = z_min_p-fudge
         z_max = z_max_p+fudge
         
-        zeros = subset.loc[(subset.chromatopy_fa==0) & (subset.hand_fa > 0)]
-        zeros_man = subset.loc[(subset.chromatopy_fa>0) & (subset.hand_fa == 0)]
-        subset = subset.loc[~(subset.chromatopy_fa==0) & (subset.hand_fa > 0)]
+        zeros = subset.loc[(subset[x_v]==0) & (subset[y_v] > 0)]
+        zeros_man = subset.loc[(subset[x_v]>0) & (subset[y_v] == 0)]
+        subset = subset.loc[~(subset[x_v]==0) & (subset[y_v] > 0)]
         for k in subset.Region.unique():
             temp = subset[subset.Region==k]
             y = temp[y_v]
@@ -102,14 +75,14 @@ for i in range(4):
                 unique_labels.append('Discordant GDGT peaks')
                 seen_labels.add('Discordant GDGT peaks')
         if len(zeros) > 0:
-            zero_h = ax.scatter(zeros.hand_fa, zeros.chromatopy_fa, marker = 'x', color='k', zorder=2)
+            zero_h = ax.scatter(zeros[y_v], zeros[x_v], marker = 'x', color='k', zorder=2)
             if 'Discordant GDGT peaks' not in seen_labels:
                 unique_handles.append(zero_h)
                 unique_labels.append('Zero values')
                 seen_labels.add('Zero values')
         if len(zeros_man) > 0:
             # print(f"{brgdgt_type}: {len(zeros_man)}")
-            ax.scatter(zeros_man.hand_fa, zeros_man.chromatopy_fa, marker = 'x', color='k', zorder=2)
+            ax.scatter(zeros_man[y_v], zeros_man[x_v], marker = 'x', color='k', zorder=2)
         one_to_one = ax.plot([z_min_p,z_max_p], [z_min_p,z_max_p], 'k', alpha=0.75, zorder=0)[0]
         if "1:1 line" not in seen_labels:
             unique_handles.append(one_to_one)
@@ -163,4 +136,5 @@ fig.supxlabel('Peak Area\n(User 1)', x = 0.54, y = 0.07, ha = 'center')
 fig.supylabel('Peak Area\n(User 2)', x=0.01)
 plt.tight_layout(rect=[0, 0.06, 1, 0.95])
 plt.subplots_adjust(wspace=0.4, hspace=0.4)
+plt.savefig("Fig. S1.png", dpi=300)
 plt.show()

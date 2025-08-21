@@ -10,7 +10,7 @@ def plot_scatter_with_errorbars(ax, df, x_col, y_col, yerr_lower_col, yerr_upper
     for region in df[region_col].unique():
         temp = df[df[region_col] == region]
         y = temp[y_col]
-        low_err = np.where(y - temp[yerr_lower_col] < 0, y, temp[yerr_lower_col])
+        low_err = temp[yerr_lower_col]
         up_err = temp[yerr_upper_col]
         err = [low_err, up_err]
 
@@ -35,7 +35,7 @@ def add_regression_line(ax, x, y, color='red', label='Regression model', linesty
 def add_correlation_text(ax, x, y, subset, panel_label, pos=(0.05, 0.75), color='black'):
     r, p = pearsonr(x, y)
     r_text, p_text = corr_text(r, p)
-    correlation_text = f'({panel_label})\n{r_text}\n{p_text}\nn = {len(subset)}'
+    correlation_text = f'({panel_label})\n{r_text}\n{p_text}\nn = {len(x)}'
     ax.text(*pos, correlation_text, transform=ax.transAxes, ha='left', color=color)
 
 def add_one_to_one_line(ax, limits, label='1:1', **kwargs):
@@ -55,3 +55,15 @@ def corr_text(r, p_value):
     else:
         r_text = 'r$_{{Pearson}}$ > 0.999'
     return r_text, p_text
+
+def remove_samples(df, ignore_isogdgts, ignore_brgdgts):
+    brGDGTs = ["Ia", "IIa", "IIa'", "IIIa","IIIa'",
+               "Ib", "IIb", "IIb'", "IIIb","IIIb'",
+               "Ic", "IIc", "IIc'", "IIIc","IIIc'",]
+    isoGDGTs = ["GDGT-0", "GDGT-1", "GDGT-2", "GDGT-3", "GDGT-4", "GDGT-4'"]
+    iso_map = (df['Sample Name'].isin(ignore_isogdgts)) & (df['variable'].isin(isoGDGTs))
+    br_map  = (df['Sample Name'].isin(ignore_brgdgts))  & (df['variable'].isin(brGDGTs))
+    ignored = df.loc[(iso_map)|(br_map)]
+    retained = df.loc[~((iso_map)|(br_map))]
+    return retained, ignored
+    

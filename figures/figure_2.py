@@ -10,67 +10,72 @@ import numpy as np
 from data_processing.load_data import *
 from figures.figure_2_functions import *
 
-legend_map = {} 
 plt.rcParams.update({'font.size': 10})
 
 # Import data
-df, _ = load_chraomtopy_and_manual()
-# Calcualte error, bias, and limits of agreement between manual and 
-results = bland_altman_metrics(df)
-# Calcaulte difference and error metrics of user comparison
-smaller, larger = user_comparison(df)
+df = load_chraomtopy_and_manual()
 
+# Remove misidentified samples
+ignore_isogdgts = ['H1608000189', 'H1801000129', 'H1801000194', 'H1801000130']
+ignore_brgdgts = ['H1608000014', 'H2202085', 'H2202081', 'H2202087', 'H1608000013', 'H2305015', 'H1805000004', 'H2307064', 'H2204051', 'H1801000131']
+df, ignored = remove_samples(df, ignore_isogdgts, ignore_brgdgts)
+df = bland_altman_metrics(df)
+
+# Calcaulte difference and error metrics of user comparison
+df = user_comparison(df)
+df = add_z_uncertainty_flag(df, diff_col='perc_diff', uncert_col = 'err')
+df_low = df[df['z_uncertainty']==0]
+df_high = df[df['z_uncertainty']==1]
 
 fig, axs = plt.subplots(3, 3, figsize=(15, 7), constrained_layout=True)
 ax0, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8 = axs[0,0], axs[1,0], axs[2,0], axs[0,1], axs[1,1], axs[2,1], axs[0,2], axs[1,2], axs[2,2]
 
 # Panel A
-smaller_ax = ax0.scatter(smaller['chromatopy_pa'], -smaller['diff'], c='k', marker='d', 
-                         ec='k', s=70, alpha=0.5, label='Difference < uncertainty')
-larger_ax = ax0.scatter(larger['chromatopy_pa'], -larger['diff'], c='red', marker='d',
-                        ec='k', s=70, alpha=0.5, label='Difference > uncertainty')
+ax0.scatter(df_low['chromatopy_pa'], df_low['perc_diff'], c='k', marker='d', ec='k', 
+            s=70, alpha=0.5, label='Within 1σ uncertainty')
+ax0.scatter(df_high['chromatopy_pa'], df_high['perc_diff'], c='red', marker='d', ec='k',
+            s=70, alpha=0.5, label='Outside 1σ outside')
 ax0.axhline(0, c='k')
 ax0.set_ylabel('Peak Area\nDifference (%)')
 ax0.set_title("chromatoPy user comparison")
-ax0.legend(frameon=False)
 
 # Panel B
-filt_sm = smaller[smaller['chromatopy_pa'] < 5000]
-filt_lg = larger[larger['chromatopy_pa'] < 5000]
-ax1.scatter(filt_sm['chromatopy_pa'], -filt_sm['diff'], c='k', marker='d', ec='k', s=70, alpha=0.5)
-ax1.scatter(filt_lg['chromatopy_pa'], -filt_lg['diff'], c='red', marker='d', ec='k', s=70, alpha=0.5)
+sub = df[df['chromatopy_pa']<5000]
+ax1.scatter(sub[sub['z_uncertainty']==0]['chromatopy_pa'], sub[sub['z_uncertainty']==0]['perc_diff'], c='k', marker='d', ec='k', s=70, alpha=0.5)
+ax1.scatter(sub[sub['z_uncertainty']==1]['chromatopy_pa'], sub[sub['z_uncertainty']==1]['perc_diff'], c='red', marker='d', ec='k', s=70, alpha=0.5)
 ax1.set_ylabel('Peak Area\nDifference (%)')
 
 # Panel C
-test = df[df['chromatopy_pa']<5000]
-bins = np.histogram_bin_edges(test['chromatopy_pa'], bins=20)
-ax2.hist([filt_sm['chromatopy_pa'], filt_lg['chromatopy_pa']], bins=bins, color=['k', 'red'], histtype='barstacked')
+bins = np.histogram_bin_edges(sub['chromatopy_pa'], bins=20)
+ax2.hist([sub[sub['z_uncertainty']==0]['chromatopy_pa'], sub[sub['z_uncertainty']==1]['chromatopy_pa']], bins=bins, color=['k','red'], histtype='barstacked')
 ax2.set_ylabel("Peak Count")
 ax2.set_xlabel('Peak Area - User 1\n(Amplitude • Time)')
 
 # Panel D
-below, above, thresh = threshold_outliers(results) # get data bove and below outlier threshold (2-sigma)
 ax3.set_title('Uncertainty')
-ax3.scatter(below['chromatopy_pa'], results['pos_err'][below.index]/100, c='k', ec='k', alpha=0.6, label="Uncertainty < 2$σ$")
-ax3.scatter(above['chromatopy_pa'], results['pos_err'][above.index]/100, c='red', ec='k', alpha=0.6, label="Uncertainty > 2$σ$")
-ax3.axhline(thresh / 100, c='red', linestyle='-', alpha=0.5)
-ax3.set_ylabel("Relative Uncertainty (2-$σ$)")
-ax3.legend(frameon=False)
+ax3.scatter(df_low['chromatopy_pa'], df_low['rel_err'], c='k', marker='d', ec='k', s=70, alpha=0.5)
+ax3.scatter(df_high['chromatopy_pa'], df_high['rel_err'], c='red', marker='d', ec='k', s=70, alpha=0.5)
+ax3.set_ylabel("Relative Uncertainty\n(%)")
+
+# # Panel E
+sub = df[df['chromatopy_pa']<5000]
+ax4.scatter(sub[sub['z_uncertainty']==0]['chromatopy_pa'], sub[sub['z_uncertainty']==0]['rel_err'], c='k', marker='d', ec='k', s=70, alpha=0.5)
+ax4.scatter(sub[sub['z_uncertainty']==1]['chromatopy_pa'], sub[sub['z_uncertainty']==1]['rel_err'], c='red', marker='d', ec='k', s=70, alpha=0.5)
+ax4.set_xlabel("Peak Area (chromatoPy)")
+ax4.set_ylabel("Relative Uncertainty\n(%)")
 
 # Panel E
-ax4.hist([below['chromatopy_pa'], above['chromatopy_pa']], bins=bins, color=['black', 'red'], histtype='barstacked')
-ax4.set_xlabel("Peak Area (chromatoPy)")
-ax4.set_ylabel("Peak Count")
-
-# Panel F
 ax6.set_title("chromatoPy-manual comparison")
-ax6.scatter(results['mean'], results['diff'] / results['clean_df']['hand_ra'] * 100, color='k', ec='k', marker='o', alpha=0.5)
+clean_df = df #results['clean_df']
+clean_df['user-chromatopy'] = ((clean_df['chromatopy_ra']-clean_df['hand_ra'])/((clean_df['chromatopy_ra']+clean_df['hand_ra'])/2))*100
+ax6.scatter(clean_df['chromatopy_ra'], clean_df['user-chromatopy'], c='k', 
+            ec='k', alpha=0.5, s=70, label="chromatoPy-manual comparison")
 ax6.axhline(0, c='k')
 ax6.set_ylabel("Scaled Peak Area\nDifference (%)")
 
-# Panel G
-small = results['clean_df'][results['clean_df']['hand_ra'] < 0.01]
-ax7.scatter(small['hand_ra'], (small['chromatopy_ra'] - small['hand_ra']) / small['hand_ra'] * 100, color='k', ec='k', marker='o', alpha=0.5)
+# Panel F
+small = clean_df[clean_df['hand_ra']<0.01]
+ax7.scatter(small['chromatopy_ra'], small['user-chromatopy'], c='k', ec='k', alpha=0.5, s=70)
 ax7.axhline(0, c='k')
 ax7.set_ylabel("Scaled Peak Area\nDifference (%)")
 ax7.set_xlabel("Scale Peak Area\n(Manual)")
@@ -111,6 +116,15 @@ for ax in [ax0, ax1, ax2, ax3, ax4, ax5, ax6,ax7]:
 ax5.set_axis_off()
 ax8.set_axis_off()
 
+# Legend
+handles0, labels0 = ax0.get_legend_handles_labels()
+handles6, labels6 = ax6.get_legend_handles_labels()
+handles = handles0 + handles6
+labels = labels0 + labels6
+ax5.legend(handles, labels, frameon=False, loc="center")
+ax5.axis("off")
+
 plt.tight_layout(rect=[0, 0, 1, 1])
 fig.subplots_adjust(hspace=0.5)
+plt.savefig("Fig. 2.png", dpi=300)
 plt.show()

@@ -6,36 +6,11 @@ import numpy as np
 from scipy.stats import spearmanr, pearsonr
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
+from data_processing.load_data import load_chraomtopy_and_manual
 
 
 # Import data
-chpy_man_data = pd.read_csv('data/chromatoPy and manual data.csv') # subset of overlapping chromatoPy and manually integrated data results
-chpy_full = pd.read_csv('data/chromatopy_data_full.csv') # results from chromatopy integration (no subsetting by manual integrations)
-user_2_data = pd.read_csv('data/chromatoPy_user_2_data_peak_area.csv') # chromatoPy integrations from independent second user
-user_2_fa = pd.read_csv('data/user_2_data_fractional_abundance.csv')
-
-# Process data
-chpy_man_data['chromatopy_ra'].fillna(0, inplace=True)
-chpy_man_data['chromatopy_ra'].fillna(0, inplace=True)
-chpy_man_data['hand_ra'].fillna(0, inplace=True)
-chpy_man_data['hand_ra'].fillna(0, inplace=True)
-
-columns_of_interest = ["Sample Name", "Ia", "Ib", "Ic", "IIa", "IIb", "IIc", "IIIa", "IIIb", "IIIc", "IIa'", "IIb'", "IIc'", "IIIa'", "IIIb'", "IIIc'", 'GDGT-0', 'GDGT-1', 'GDGT-2', 'GDGT-3', 'GDGT-4', "GDGT-4'"]
-brgdgts = ["Ia", "Ib", "Ic", "IIa", "IIb", "IIc", "IIIa", "IIIb", "IIIc", "IIa'", "IIb'", "IIc'", "IIIa'", "IIIb'", "IIIc'"]
-user_2_data = user_2_data[columns_of_interest]
-user_2_data = user_2_data.melt(id_vars='Sample Name')
-user_2_data = user_2_data.rename(columns={'value': 'user_2_values'})
-
-# Seperate mis-identified samples
-misid_names = ['H1608000196', 'H1608000191', 'H1608000189', 'H2102002', 'H2102003', 'H2102004'] # names of samples with misidentified peaks
-misidentified_samples = chpy_man_data[chpy_man_data['Sample Name'].isin(misid_names)]
-chpy_man_data = chpy_man_data.loc[~((chpy_man_data['Sample Name'].isin(misid_names))&(chpy_man_data['variable'].isin(brgdgts)))]
-
-user_peak_areas=pd.merge(user_2_data, chpy_full[['Sample Name', 'variable', 'chromatopy_value']],on=['Sample Name', 'variable'], how='right')
-df = pd.merge(chpy_man_data, user_peak_areas, on=['Sample Name', 'variable'], how='left', suffixes=("","_PA"))
-df=df.fillna(0)
-
-df = df.loc[~((df['Sample Name'].isin(misidentified_samples))&(df['variable'].isin(brgdgts)))]
+df = load_chraomtopy_and_manual()
 
 
 brgdgt_types = ["Ia", "IIa","IIa'" , "IIIa", "IIIa'",
@@ -45,16 +20,12 @@ brgdgt_types = ["Ia", "IIa","IIa'" , "IIIa", "IIIa'",
 unique_types = sorted(df['variable'].unique())
 
 plt.rcParams.update({'font.size': 10})
-# Set up the 4x4 subplot grid with space for 16 subplots (bottom-right subplot blank)
 fig, axes = plt.subplots(4, 6, figsize=(15, 11), constrained_layout=True)
 
 # legend
 unique_handles = []
 unique_labels = []
-
-
 legend_map = {} 
-# Iterate over GDGT types and axes
 x=0
 for i in range(4):
     for j in range(6):
@@ -62,7 +33,7 @@ for i in range(4):
             axes[i, j].axis("off")
             continue
         ax = axes[i, j]
-        if x >= len(brgdgt_types):  # stop if we've used all types
+        if x >= len(brgdgt_types):
             ax.axis("off")
             continue
         brgdgt_type = brgdgt_types[x]
@@ -101,12 +72,12 @@ for i in range(4):
                 unique_handles.append(scatter)
                 unique_labels.append(k)
         if len(zeros) > 0:
-            print(f"{brgdgt_type}: {len(zeros)}")
+            # print(f"{brgdgt_type}: {len(zeros)}")
             zero_h = ax.scatter(zeros.hand_ra, zeros.chromatopy_ra, marker = 'x', color='k', zorder=2)
             legend_map.setdefault('Zero Values', zero_h)
 
         if len(zeros_man) > 0:
-            print(f"{brgdgt_type}: {len(zeros_man)}")
+            # print(f"{brgdgt_type}: {len(zeros_man)}")
             ax.scatter(zeros_man.hand_ra, zeros_man.chromatopy_ra, marker = 'x', color='k', zorder=2)
 
         one_one_line = ax.plot([z_min_p,z_max_p], [z_min_p,z_max_p], 'k', alpha=0.75, zorder=0, label = "1:1 line")
@@ -142,7 +113,6 @@ for i in range(4):
         ax.set_ylim(z_min, z_max)
         x += 1
         
-# Legend
 fig.legend(
     handles = list(legend_map.values()),
     labels  = list(legend_map.keys()),
@@ -155,5 +125,5 @@ fig.supylabel('Scaled Peak Area\n (chromatoPy)', x=0.01)
 
 plt.tight_layout(rect=[0, 0.1, 1, 0.95])
 plt.subplots_adjust(wspace=0.4, hspace=0.4)
-plt.savefig('/Users/gerard/Documents/GitHub/chromatoPy_manuscript/Figures/mod/Fig 3.png', dpi=300)
+plt.savefig("Fig. 3.png", dpi=300)
 plt.show()
