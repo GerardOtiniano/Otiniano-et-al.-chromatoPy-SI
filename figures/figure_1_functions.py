@@ -1,6 +1,8 @@
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from scipy.stats import pearsonr
+from typing import Iterable, Optional, Tuple
+import pandas as pd
 
 def plot_scatter_with_errorbars(ax, df, x_col, y_col, yerr_lower_col, yerr_upper_col,
                                 region_col='Region', special_region='Lake Bolshoye Shchuchye',
@@ -56,14 +58,28 @@ def corr_text(r, p_value):
         r_text = 'r$_{{Pearson}}$ > 0.999'
     return r_text, p_text
 
-def remove_samples(df, ignore_isogdgts, ignore_brgdgts):
-    brGDGTs = ["Ia", "IIa", "IIa'", "IIIa","IIIa'",
-               "Ib", "IIb", "IIb'", "IIIb","IIIb'",
-               "Ic", "IIc", "IIc'", "IIIc","IIIc'",]
+
+def remove_samples(
+    df: pd.DataFrame,
+    ignore_isogdgts: Optional[Iterable[str]] = None,
+    ignore_brgdgts: Optional[Iterable[str]] = None):
+    brGDGTs = [
+        "Ia", "IIa", "IIa'", "IIIa", "IIIa'",
+        "Ib", "IIb", "IIb'", "IIIb", "IIIb'",
+        "Ic", "IIc", "IIc'", "IIIc", "IIIc'"]
     isoGDGTs = ["GDGT-0", "GDGT-1", "GDGT-2", "GDGT-3", "GDGT-4", "GDGT-4'"]
-    iso_map = (df['Sample Name'].isin(ignore_isogdgts)) & (df['variable'].isin(isoGDGTs))
-    br_map  = (df['Sample Name'].isin(ignore_brgdgts))  & (df['variable'].isin(brGDGTs))
-    ignored = df.loc[(iso_map)|(br_map)]
-    retained = df.loc[~((iso_map)|(br_map))]
+    ignore_isogdgts = set(ignore_isogdgts or [])
+    ignore_brgdgts = set(ignore_brgdgts or [])
+    sample = df["Sample Name"]
+    var    = df["variable"]
+    iso_map = sample.isin(ignore_isogdgts) & var.isin(isoGDGTs)
+    br_map  = sample.isin(ignore_brgdgts)  & var.isin(brGDGTs)
+    mask = iso_map | br_map
+    ignored = df.loc[mask].copy()
+    if not ignored.empty:
+        ignored["ignored_reason"] = pd.Series(index=ignored.index, dtype=object)
+        ignored.loc[iso_map[mask], "ignored_reason"] = "isoGDGT"
+        ignored.loc[br_map[mask],  "ignored_reason"] = "brGDGT"
+
+    retained = df.loc[~mask].copy()
     return retained, ignored
-    

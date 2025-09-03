@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 from data_processing.load_data import *
 from figures.figure_1_functions import *
 from figures.figure_2_functions import user_comparison
@@ -29,34 +30,22 @@ print(f"Median percent difference: {median:.3f}%")
 print(f"Approx. -1σ: {p16:.3f}%")
 print(f"Approx. +1σ: {p84:.3f}%")
 print(f"Approx. σ (half-width): {(p84 - p16)/2:.3f}%")
-
 # %% Chromatopy - uncertainty test 
-thresh = 500
+df, ignored = remove_samples(df, ignore_isogdgts, ignore_brgdgts)
+df = bland_altman_metrics(df)
+sub = user_comparison(df)
+thresh = 400
 print(np.mean(sub[sub['chromatopy_pa']<thresh]['perc_diff']))
 print(np.percentile(sub[sub['chromatopy_pa']<thresh]['perc_diff'], 2.5))
 print(np.percentile(sub[sub['chromatopy_pa']<thresh]['perc_diff'], 97.5))
+t = sub[sub['chromatopy_pa']<thresh]
+print(len(t['diff']<t['err'])/len(t))
+
 print(np.mean(sub[sub['chromatopy_pa']>thresh]['perc_diff']))
 print(np.percentile(sub[sub['chromatopy_pa']>thresh]['perc_diff'], 2.5))
 print(np.percentile(sub[sub['chromatopy_pa']>thresh]['perc_diff'], 97.5))
-
-# %% Z-score uncertainty
-df = load_chraomtopy_and_manual()
-
-# Remove misidentified samples
-ignore_isogdgts = ['H1608000189', 'H1801000129', 'H1801000194', 'H1801000130']
-ignore_brgdgts = ['H1608000014', 'H2202085', 'H2202081', 'H2202087', 'H1608000013', 'H2305015', 'H1805000004', 'H2307064', 'H2204051', 'H1801000131']
-df, ignored = remove_samples(df, ignore_isogdgts, ignore_brgdgts)
-results = bland_altman_metrics(df)
-sub = user_comparison(df)
-sub['uncertainty'] = np.sqrt(((sub['chromatopy_pa_lower']+sub['chromatopy_pa_upper'])/2)**2+((sub['user_2_pa_lower']+sub['user_2_pa_upper'])/2)**2)
-
-res = zscore_summary(
-    sub,
-    diff_col='perc_diff',
-    uncert_col='uncertainty',
-    split_col='chromatopy_pa',
-    threshold=500)
-res
+t = sub[sub['chromatopy_pa']>thresh]
+print(len(t['diff']<t['err'])/len(t))
 
 # %% Chromatopy-Manual comarison
 
@@ -102,7 +91,7 @@ def build_table(df, x_col, y_col, peak_type):
         # Median absolute difference
         med_diff = np.median(temp['difference'])
         
-        # Percent median difference (relative to median of x_col)
+        # Percent median difference
         med_peak = np.nanmedian(temp[x_col])
         percent_diff = (med_diff / med_peak) * 100 if med_peak != 0 else np.nan
         median_val = np.median(temp[x_col])
@@ -119,32 +108,20 @@ def build_table(df, x_col, y_col, peak_type):
             "percent_diff": percent_diff,
             "percent_uncertainty": percent_uncertainty,
             "median_val": median_val,
-            "number of peaks": len(temp[x_col])
-        })
+            "number of peaks": len(temp[x_col])})
     
-    # Formatting
     df_out = pd.DataFrame(results)
-    
-    # Format p-values
     df_out["p_value"] = df_out["p_value"].apply(lambda p: "<0.001" if p < 0.001 else f"{p:.3f}")
-    
-    # Format median difference in scientific notation
     df_out["median_diff"] = df_out["median_diff"].apply(lambda x: f"{x:.3e}")
-    
-    # Round percent diff to 2 decimals
     df_out["median_val"] = df_out["median_val"].apply(lambda p: "<0.001" if p < 0.001 else f"{p:.3f}")
     df_out["percent_diff"] = df_out["percent_diff"].round(3)
     df_out["percent_uncertainty"] = df_out["percent_uncertainty"].round(3)
-    
     return df_out
-
-# Build both tables
 table_ra = build_table(df, "chromatopy_ra", "hand_ra", "ra")
 table_fa = build_table(df, "chromatopy_fa", "hand_fa", "fa")
 
-# Display
-print("\n=== Table: Chromatopy RA vs Manual RA ===")
+print("\nTable: Chromatopy RA vs Manual RA")
 print(table_ra.to_string(index=False))
 
-print("\n=== Table: Chromatopy FA vs Manual FA ===")
+print("\nTable: Chromatopy FA vs Manual FA")
 print(table_fa.to_string(index=False))

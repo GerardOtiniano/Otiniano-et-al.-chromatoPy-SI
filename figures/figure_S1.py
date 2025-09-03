@@ -7,16 +7,16 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.stats import gaussian_kde
 from data_processing.load_data import load_chraomtopy_and_manual
+from figures.figure_2_functions import *
 
 # Import data
 df  = load_chraomtopy_and_manual()
 x_v = 'chromatopy_pa'
 y_v = 'user_2_pa'
 brgdgts = ["Ia", "IIa", "IIa'", "IIIa", "IIIa'", "Ib", "IIb", "IIb'", "IIIb", "IIIb'", "Ic", "IIc", "IIc'", "IIIc", "IIIc'"]
-sample_to_ignore = ['H2202081', 'H2308012', 'H2202085', 'H2202087', 'H1608000014', 'H1608000013', 'H2307071'] # misidentified peaks
-ignored_samples = df.loc[((df['Sample Name'].isin(sample_to_ignore))&(df['variable'].isin(brgdgts)))]
-df = df[~df['Sample Name'].isin(sample_to_ignore)]
-df = df.loc[~((df['Sample Name'].isin(sample_to_ignore))&(df['variable'].isin(brgdgts)))]
+ignore_isogdgts = ['H1608000189', 'H1801000129', 'H1801000194', 'H1801000130']
+ignore_brgdgts = ['H1608000014', 'H2202085', 'H2202081', 'H2202087', 'H1608000013', 'H2305015', 'H1805000004', 'H2307064', 'H2204051', 'H1801000131']
+df, ignored = remove_samples(df, ignore_isogdgts, ignore_brgdgts)
 
 all_regions = sorted(set(df['Region'].dropna().unique()))
 color_list = plt.cm.get_cmap('tab20', len(all_regions)).colors
@@ -49,7 +49,7 @@ for i in range(4):
         brgdgt_type = brgdgt_types[x]
         ax = axes[i,j]
         subset = df[df['variable'] == brgdgt_type]
-        ig_sub = ignored_samples[ignored_samples['variable']== brgdgt_type]
+        ig_sub = ignored[ignored['variable']== brgdgt_type]
         # limits
         z_min_p = subset[[x_v,y_v]].min().min()
 

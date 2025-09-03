@@ -43,9 +43,9 @@ ax2.yaxis.set_label_position("right")
 ax2.yaxis.tick_right()
 
 # AX C
-ignore_isogdgts = ['H1608000189', 'H1801000129', 'H1801000194', 'H1801000130']
-ignore_brgdgts = ['H1608000014', 'H2202085', 'H2202081', 'H2202087', 'H1608000013', 'H2305015', 'H1805000004', 'H2307064', 'H2204051', 'H1801000131']
-subset_user, ignored = remove_samples(subset, ignore_isogdgts, ignore_brgdgts)
+ignore_isogdgts = ['H1608000189']
+ignore_brgdgts = ['H1608000014', 'H2202085', 'H2202081', 'H2202087', 'H1608000013', 'H1805000004', 'H2307064', 'H2204051']
+subset_user, ignored = remove_samples(subset, ignore_isogdgts=ignore_isogdgts, ignore_brgdgts=ignore_brgdgts)
 
 comparison = ax3.scatter(subset_user.chromatopy_pa, subset_user.user_2_pa, c='k', marker='d', s=80, label='Inter-user comparison')
 comparison_ignore = ax3.scatter(ignored.chromatopy_pa, ignored.user_2_pa, c='red', marker='x', s=40)
